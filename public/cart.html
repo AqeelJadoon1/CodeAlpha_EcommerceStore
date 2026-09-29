@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cart - My Store</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    header { background: #222; color: white; padding: 16px 24px; }
+    header a { color: white; text-decoration: none; }
+    .wrap { max-width: 600px; margin: 24px auto; }
+    .row { display: flex; justify-content: space-between; align-items: center;
+           background: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; }
+    .total { text-align: right; font-weight: bold; font-size: 20px; margin-top: 16px; }
+    button { padding: 10px 20px; background: #222; color: white; border: 0;
+              border-radius: 4px; cursor: pointer; }
+    .remove { background: #c0392b; padding: 4px 10px; font-size: 12px; }
+    .msg { color: #0a7d2c; text-align: center; }
+  </style>
+</head>
+<body>
+  <header><a href="/"><h1>My Store</h1></a></header>
+  <div class="wrap">
+    <h2>Your Cart</h2>
+    <div id="items"></div>
+    <div class="total" id="total"></div>
+    <div style="text-align:right; margin-top:12px;">
+      <button id="checkout-btn">Checkout</button>
+    </div>
+    <p class="msg" id="msg"></p>
+  </div>
+
+  <script>
+    function getCart() {
+      return JSON.parse(localStorage.getItem('cart') || '[]');
+    }
+    function saveCart(cart) {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+
+    async function renderCart() {
+      const cart = getCart();
+      const itemsEl = document.getElementById('items');
+
+      if (cart.length === 0) {
+        itemsEl.innerHTML = '<p>Your cart is empty.</p>';
+        document.getElementById('total').textContent = '';
+        return;
+      }
+
+      // Fetch full details for every product in the cart
+      const products = await Promise.all(
+        cart.map(item => fetch('/api/products/' + item.productId).then(r => r.json()))
+      );
+
+      let total = 0;
+      itemsEl.innerHTML = '';
+      cart.forEach((item, index) => {
+        const p = products[index];
+        const lineTotal = p.price * item.quantity;
+        total += lineTotal;
+
+        itemsEl.innerHTML += `
+          <div class="row">
+            <span>${p.emoji} ${p.name} × ${item.quantity}</span>
+            <span>
+              $${lineTotal.toFixed(2)}
+              <button class="remove" data-id="${p.id}">Remove</button>
+            </span>
+          </div>`;
+      });
+
+      document.getElementById('total').textContent = 'Total: $' + total.toFixed(2);
+
+      // Wire up all the Remove buttons
+      document.querySelectorAll('.remove').forEach(btn => {
+        btn.onclick = () => {
+          const id = Number(btn.dataset.id);
+          const newCart = getCart().filter(item => item.productId !== id);
+          saveCart(newCart);
+          renderCart();
+        };
+      });
+    }
+
+    document.getElementById('checkout-btn').onclick = async () => {
+      const cart = getCart();
+      if (cart.length === 0) return;
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cart })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        document.getElementById('msg').textContent = result.error;
+        document.getElementById('msg').style.color = '#c0392b';
+        return;
+      }
+
+      localStorage.removeItem('cart');
+      document.getElementById('msg').textContent =
+        'Order #' + result.orderId + ' placed! Total: $' + result.total.toFixed(2);
+      renderCart();
+    };
+
+    renderCart();
+  </script>
+</body>
+</html>

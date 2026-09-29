@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Store</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    header { background: #222; color: white; padding: 16px 24px; }
+    #products { display: grid; gap: 16px; padding: 24px;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .card { background: white; border-radius: 8px; padding: 16px; text-align: center; }
+    .emoji { font-size: 48px; }
+    .price { color: #0a7d2c; font-weight: bold; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+header a, header button { color: white; margin-left: 12px; }
+header button { background: none; border: 1px solid white; padding: 6px 12px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>My Store</h1>
+  <div>
+    <a href="/cart.html" style="color:white; margin-right:16px;">🛒 Cart</a>
+    <span id="user-area"></span>
+  </div>
+</header>
+  <div id="products">Loading...</div>
+
+  <script>
+    async function loadProducts() {
+      const response = await fetch('/api/products');
+      const products = await response.json();
+
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+
+      products.forEach(p => {
+        container.innerHTML += `
+  <a class="card" href="/product.html?id=${p.id}" style="text-decoration:none; color:inherit; display:block;">
+            <div class="emoji">${p.emoji}</div>
+            <h3>${p.name}</h3>
+            <p>${p.description}</p>
+            <p class="price">$${p.price.toFixed(2)}</p>
+          </a>`;
+      });
+    }
+    async function checkUser() {
+  const response = await fetch('/api/me');
+  const user = await response.json();
+  const area = document.getElementById('user-area');
+
+  if (user) {
+    const hello = document.createElement('span');
+    hello.textContent = 'Hi, ' + user.name;   // textContent is safe from HTML injection
+
+    const logout = document.createElement('button');
+    logout.textContent = 'Log out';
+    logout.onclick = async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.reload();
+    };
+
+    area.append(hello, logout);
+  } else {
+    area.innerHTML = '<a href="/account.html">Log in / Register</a>';
+  }
+}
+checkUser();
+    loadProducts();
+  </script>
+</body>
+</html>

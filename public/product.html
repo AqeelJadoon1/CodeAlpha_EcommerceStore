@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product - My Store</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+    header { background: #222; color: white; padding: 16px 24px; }
+    header a { color: white; text-decoration: none; }
+    .box { max-width: 500px; margin: 24px auto; background: white; border-radius: 8px;
+           padding: 24px; text-align: center; }
+    .emoji { font-size: 80px; }
+    .price { color: #0a7d2c; font-weight: bold; font-size: 24px; }
+    button { padding: 10px 20px; background: #222; color: white; border: 0;
+              border-radius: 4px; cursor: pointer; margin-top: 12px; }
+    select { padding: 6px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header><a href="/"><h1>My Store</h1></a></header>
+  <div class="box" id="box">Loading...</div>
+
+  <script>
+    // Read ?id=3 from the URL
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+
+    async function loadProduct() {
+      const response = await fetch('/api/products/' + id);
+      if (!response.ok) {
+        document.getElementById('box').textContent = 'Product not found';
+        return;
+      }
+      const p = await response.json();
+
+      document.getElementById('box').innerHTML = `
+        <div class="emoji">${p.emoji}</div>
+        <h2>${p.name}</h2>
+        <p>${p.description}</p>
+        <p class="price">$${p.price.toFixed(2)}</p>
+        <select id="qty">
+          ${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}
+        </select>
+        <br>
+        <button id="add-btn">Add to cart</button>
+      `;
+
+      document.getElementById('add-btn').onclick = () => {
+        const qty = Number(document.getElementById('qty').value);
+        addToCart(p.id, qty);
+        alert('Added to cart!');
+      };
+    }
+
+    function addToCart(productId, quantity) {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const existing = cart.find(item => item.productId === productId);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        cart.push({ productId, quantity });
+      }
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+
+    loadProduct();
+  </script>
+</body>
+</html>
